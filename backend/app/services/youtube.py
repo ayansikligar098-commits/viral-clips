@@ -131,10 +131,15 @@ def download_youtube_video(
         # 1 MB Range chunks: the egress proxy cuts long transfers, and
         # small chunks + retries get through where one big GET stalls.
         "http_chunk_size": 1048576,
-        # Android player client: the web client is bot-checked
-        # ("Sign in to confirm you're not a bot") from shared IPs, while
-        # the android client still returns working combined-mp4 formats.
-        "extractor_args": {"youtube": {"player_client": ["android"]}},
+        # Player clients, in fallback order: yt-dlp tries each until one
+        # returns a usable player response. Android first (it returns
+        # combined-mp4 formats with no PO token); then TV, iOS, web.
+        # The web client alone is bot-checked ("Sign in to confirm you're
+        # not a bot") from shared/datacentre IPs, and on Render the
+        # android client failed to extract any player response at all
+        # (2026-11-15 live test: 502 twice), so a single client is not
+        # enough — fall back through the others before giving up.
+        "extractor_args": {"youtube": {"player_client": ["android", "tv", "ios", "web"]}},
         # Avoid yt-dlp picking up a stray browser/cookies setup; anonymous fetch.
         "no_cookies": True,
     }
