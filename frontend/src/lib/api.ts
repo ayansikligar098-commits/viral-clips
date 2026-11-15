@@ -131,8 +131,15 @@ export async function register(
     method: "POST",
     body: JSON.stringify({ email, password, name }),
   });
-  if (data.access_token) setToken(data.access_token);
-  return data;
+  if (data.access_token) {
+    setToken(data.access_token);
+    return data;
+  }
+  // Fallback for a backend that returns only the user (no token): log in
+  // immediately with the same credentials, so Sign up never leaves the
+  // user without a token (which used to surface as
+  // "Missing Authorization header" on the dashboard).
+  return login(email, password);
 }
 export async function getMe(): Promise<User> {
   return apiFetch<User>("/api/auth/me");

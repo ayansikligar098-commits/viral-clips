@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { createVideoFromUrl, uploadVideo } from "@/lib/api";
+import { createVideoFromUrl, isLoggedIn, uploadVideo } from "@/lib/api";
 
 // Backend limit is 2 GB; the free test deployment handles files under
 // 500 MB far more reliably. No chunked/resumable upload in this task —
@@ -30,6 +30,7 @@ export default function UploadForm() {
 
   async function submitFile(e: React.FormEvent) {
     e.preventDefault();
+    if (!isLoggedIn()) { setError("Please log in or sign up first — uploads need an account."); return; }
     if (!file) { setError("Choose a video file first."); return; }
     if (tooLarge) { setError(`This file is ${fileSizeMB.toFixed(0)} MB — over the backend limit of ${BACKEND_LIMIT_MB / 1000} GB. Choose a smaller file.`); return; }
     if (!attested) { setError("Ownership attestation is required before uploading."); return; }
@@ -46,6 +47,7 @@ export default function UploadForm() {
 
   async function submitYoutube(e: React.FormEvent) {
     e.preventDefault();
+    if (!isLoggedIn()) { setError("Please log in or sign up first — fetching a YouTube video needs an account."); return; }
     const url = youtubeUrl.trim();
     if (!url) { setError("Paste a YouTube video link first."); return; }
     if (!attested) { setError("Ownership attestation is required before fetching a YouTube video."); return; }

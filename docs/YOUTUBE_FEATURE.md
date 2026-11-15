@@ -161,3 +161,23 @@ tracking params are stripped by canonicalisation).
   the ownership attestation, and YouTube may still block some videos
   (bot-check / PO token / age restriction) — those surface as a clear
   400/502, never a silent fake clip.
+
+## Auth fix + re-test (main agent, 2026-11-15, test server :8001)
+
+- Root cause of the live "Missing Authorization header" dashboard error:
+  `POST /api/auth/register` returned only the user (no token), so Sign up
+  left the user with no JWT; and `GET /api/auth/me` did not exist, so the
+  Topbar never showed the signed-in state. Fixed: register now returns a
+  JWT, `/me` exists, the dashboard skips protected calls when logged out
+  (sign-in prompt instead), clears an expired token on 401, and the
+  upload form blocks submit when logged out. Frontend `register()` also
+  auto-logs-in if a backend ever returns no token.
+- Re-test: register → `access_token` returned; `/me` → the test user;
+  no-token `GET /api/videos` → 401 as expected (backend correct, frontend
+  no longer triggers it logged-out). `tsc` + `npm run build` pass,
+  15 routes; smoke test 27/27.
+- Big Buck Bunny via `POST /api/videos/from-url`: 2 more attempts, both
+  502 (proxy cut the transfer after ~0.7 MB / ~0.4 MB, 30 retries). The
+  retries 10 → 30 change was therefore re-tested end-to-end and still
+  fails in this VM — the decisive test must run on Render after push.
+- 69-min podcast guard re-verified: `VdLKK1EQ92A` → 400, 15-minute limit.
