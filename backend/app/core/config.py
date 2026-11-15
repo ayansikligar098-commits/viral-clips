@@ -28,6 +28,8 @@ class Settings:
     ACCESS_TOKEN_EXPIRE_MINUTES: int = _int("ACCESS_TOKEN_EXPIRE_MINUTES", 60 * 24 * 7)
     MAX_UPLOAD_BYTES: int = _int("MAX_UPLOAD_BYTES", 2 * 1024 * 1024 * 1024)
     MAX_VIDEO_DURATION_SECONDS: int = _int("MAX_VIDEO_DURATION_SECONDS", 3 * 3600)
+    # YouTube link downloads: free-test guard, max video length (seconds).
+    YOUTUBE_MAX_DURATION_SECONDS: int = _int("YOUTUBE_MAX_DURATION_SECONDS", 900)
     META_APP_ID: str = os.getenv("META_APP_ID", "")
     META_APP_SECRET: str = os.getenv("META_APP_SECRET", "")
     META_REDIRECT_URI: str = os.getenv("META_REDIRECT_URI", "http://localhost:8000/api/instagram/callback")

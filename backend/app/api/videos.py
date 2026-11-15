@@ -9,8 +9,14 @@ from app.api.deps import get_current_user
 from app.core.config import settings
 from app.core.database import get_db
 from app.models.models import Job, User, Video
-from app.schemas import VideoOut
+from app.schemas import VideoOut, YoutubeUrlRequest
 from app.services.rendering import probe
+from app.services.youtube import (
+    YoutubeDownloadError,
+    YoutubeValidationError,
+    download_youtube_video,
+    validate_youtube_url,
+)
 
 router = APIRouter(prefix="/api/videos", tags=["videos"])
 
@@ -51,6 +57,60 @@ async def upload_video(
         raise HTTPException(status_code=400, detail="Video exceeds 3h duration limit")
     video = Video(user_id=user.id, filename=file.filename, path=str(dest),
                   duration=meta.get("duration") or None, fps=meta.get("fps") or None,
+                  width=meta.get("width") or None, height=meta.get("height") or None,
+                  owner_attestation=True)
+    db.add(video)
+    db.commit()
+    db.refresh(video)
+    job = Job(video_id=video.id, user_id=user.id, status="queued", progress=0, stage="queued")
+    db.add(job)
+    db.commit()
+    db.refresh(job)
+    return {"video": VideoOut(id=video.id, filename=video.filename, duration=video.duration,
+                              fps=video.fps, width=video.width, height=video.height,
+                              detected_language=video.detected_language,
+                              owner_attestation=True, created_at=video.created_at).model_dump(),
+            "job_id": job.id}
+
+
+@router.post("/from-url", response_model=dict, status_code=201)
+def create_video_from_url(
+    body: YoutubeUrlRequest,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """Paste-a-YouTube-link flow.
+
+    Downloads the video with yt-dlp into storage/videos, then creates the
+    same Video + Job rows as file upload, so the existing worker pipeline
+    (transcribe -> score -> quality gate -> render) runs unchanged.
+    Free-test guard: videos longer than 15 minutes are rejected.
+    """
+    if not body.owns_content:
+        raise HTTPException(status_code=400,
+                            detail="owns_content: true is required — only use YouTube videos you own or are licensed to use")
+    try:
+        canonical = validate_youtube_url(body.youtube_url)
+    except YoutubeValidationError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    settings.videos_dir.mkdir(parents=True, exist_ok=True)
+    try:
+        dest, info = download_youtube_video(
+            canonical, settings.videos_dir,
+            max_duration_seconds=settings.YOUTUBE_MAX_DURATION_SECONDS)
+    except YoutubeDownloadError as exc:
+        raise HTTPException(status_code=exc.status, detail=str(exc)) from exc
+    meta = probe(dest)
+    duration = meta.get("duration") or info.get("duration")
+    if duration and duration > settings.YOUTUBE_MAX_DURATION_SECONDS:
+        os.remove(dest)
+        raise HTTPException(status_code=400,
+                            detail=f"This video is {int(duration // 60)} minutes long — "
+                                   "the free test only accepts YouTube videos up to 15 minutes.")
+    title = (body.title or info.get("title") or "YouTube video").strip()
+    filename = (title[:180] + ".mp4") if title else "youtube-video.mp4"
+    video = Video(user_id=user.id, filename=filename, path=str(dest),
+                  duration=duration, fps=meta.get("fps") or None,
                   width=meta.get("width") or None, height=meta.get("height") or None,
                   owner_attestation=True)
     db.add(video)

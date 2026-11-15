@@ -117,6 +117,14 @@ class PublishRequest(BaseModel):
     caption: Optional[str] = None
 
 
+class YoutubeUrlRequest(BaseModel):
+    """Paste-a-YouTube-link request. owns_content must be true, exactly
+    like file upload — only content the user owns or is licensed to use."""
+    youtube_url: str
+    owns_content: bool = False
+    title: Optional[str] = None
+
+
 class PublishJobOut(BaseModel):
     id: int
     clip_id: int

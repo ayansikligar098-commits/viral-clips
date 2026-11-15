@@ -191,10 +191,29 @@ export async function uploadVideo(
   });
 }
 export async function uploadVideoByUrl(sourceUrl: string, title?: string): Promise<Video> {
-  return apiFetch<Video>("/api/videos/upload-url", {
+  // Back-compat alias: the old /upload-url endpoint never existed — this
+  // now delegates to the real YouTube-link endpoint. Callers must have
+  // attested ownership (the UploadForm YouTube tab requires the checkbox).
+  const res = await createVideoFromUrl(sourceUrl, { title, ownsContent: true });
+  return res.video;
+}
+
+/** Paste-a-YouTube-link: POST /api/videos/from-url.
+ * Returns the same {video, job_id} shape as file upload; the worker then
+ * runs the identical analysis -> clip pipeline for the downloaded video. */
+export async function createVideoFromUrl(
+  youtubeUrl: string,
+  opts: { title?: string; ownsContent?: boolean } = {},
+): Promise<{ video: Video; job_id: number }> {
+  const data = await apiFetch<{ video: Video; job_id: number }>("/api/videos/from-url", {
     method: "POST",
-    body: JSON.stringify({ source_url: sourceUrl, url: sourceUrl, title }),
+    body: JSON.stringify({
+      youtube_url: youtubeUrl,
+      owns_content: opts.ownsContent ?? false,
+      title: opts.title,
+    }),
   });
+  return data;
 }
 
 // --- Jobs / analysis ---
