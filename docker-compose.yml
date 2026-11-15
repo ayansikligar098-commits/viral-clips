@@ -1,0 +1,33 @@
+# Single-host deployment (VPS / local Docker) — one public HTTPS URL.
+# This file itself costs nothing; the VPS it runs on is the paid part
+# (typically $6-12/mo). For the FREE test, use the tunnel path in
+# docs/DEPLOY_FREE.md instead — this file is for the proper setup.
+# Storage persists in the named volume `viral-clips-storage`.
+services:
+  backend:
+    build: ./backend
+    environment:
+      - SECRET_KEY=${SECRET_KEY:?set in .env}
+      - FERNET_KEY=${FERNET_KEY:-}
+      - DATABASE_URL=sqlite:///./viral_clips.db
+      - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:3000}
+      - WHISPER_MODEL=${WHISPER_MODEL:-tiny}
+    volumes:
+      - viral-clips-storage:/app/storage
+    ports:
+      - "8000:8000"
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    environment:
+      - NEXT_PUBLIC_API_URL=relative
+      - NEXT_REWRITE_TO_BACKEND=1
+      - BACKEND_INTERNAL_URL=http://backend:8000
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+
+volumes:
+  viral-clips-storage:

@@ -1,0 +1,37 @@
+# Render blueprint — FREE TEST ONLY. No billing is enabled by this file;
+# a free web service costs $0, but you must create it from your own Render
+# account (Render needs an account + a Git repo; no card is required for free).
+#
+# FREE-TIER LIMITS (read before you rely on this):
+# - Free web service: 512 MB RAM, spins down after 15 min idle (~50 s cold
+#   start). Whisper + FFmpeg on 512 MB is slow and can fail on long videos.
+# - NO persistent disk on free services: uploaded videos and generated
+#   clips are LOST on every restart / redeploy / spin-down.
+# - Free Postgres (1 GB) expires 30 days after creation.
+# - No free background workers: the in-process DB-polling worker is used.
+# - Temporary test only. Do NOT upload private videos. Heavy processing
+#   is NOT production-ready on free hosting.
+# Proper setup: paid Standard instance (1 CPU / 2 GB, $25/mo) + paid
+# Postgres ($6/mo) + persistent disk ($0.25/GB/mo). See docs/DEPLOY_FREE.md.
+services:
+  - type: web
+    name: viral-clips-backend
+    env: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    plan: free
+    healthCheckPath: /health
+    envVars:
+      - key: SECRET_KEY
+        generateValue: true
+      - key: FERNET_KEY
+        generateValue: true
+      - key: DATABASE_URL
+        value: sqlite:///./viral_clips.db
+      - key: WHISPER_MODEL
+        value: tiny
+      - key: CORS_ORIGINS
+        value: https://viral-clips-frontend.vercel.app
+      # ^^^ Replace with your real Vercel frontend URL after deploying it.
+      - key: PYTHONUNBUFFERED
+        value: "1"

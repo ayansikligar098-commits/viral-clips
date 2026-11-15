@@ -1,0 +1,13 @@
+.venv/
+__pycache__/
+*.pyc
+.env
+viral_clips.db
+viral_clips.db-journal
+storage/videos/*
+storage/clips/*
+storage/covers/*
+!storage/videos/.gitkeep
+!storage/clips/.gitkeep
+!storage/covers/.gitkeep
+*.log
